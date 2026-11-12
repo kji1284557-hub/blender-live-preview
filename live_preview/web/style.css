@@ -22,6 +22,6 @@ main.render #threePane, main.three #renderPane { display: none; }
 #tools { border-top: 1px solid var(--line); }
 #sel { color: var(--dim); }
 footer { border-top: 1px solid var(--line); }
-#bar { display: block; width: 100%; height: 56px; background: #18191b; cursor: pointer; }
+#bar { display: block; width: 100%; height: 56px; background: #18191b; cursor: pointer; touch-action: none; }
 #frameNo { font-variant-numeric: tabular-nums; color: var(--dim); }
 @media (max-width: 800px) { main.split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }

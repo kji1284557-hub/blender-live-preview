@@ -11,6 +11,8 @@ root = pathlib.Path(__file__).resolve().parent
 src = (root / "live_preview" / "__init__.py").read_text(encoding="utf-8")
 ver = ".".join(re.search(r'"version": \((\d+), (\d+), (\d+)\)', src).groups())
 notes = sys.argv[1] if len(sys.argv) > 1 else f"v{ver}"
+if subprocess.run(["gh", "release", "view", f"v{ver}"], cwd=root, capture_output=True).returncode == 0:
+    sys.exit(f"v{ver} 는 이미 배포됨: __init__.py 의 bl_info version 을 먼저 올리세요")
 
 zp = root / "live_preview.zip"
 with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
