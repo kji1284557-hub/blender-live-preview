@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 // 애드온이 띄운 주소에서 열면 같은 출처, 다른 곳(배포 사이트)에서 열면 이 PC 의 애드온으로 접속
 const API = new URLSearchParams(location.search).get('api') ?? (location.port === '8765' ? '' : 'http://127.0.0.1:8765');
@@ -328,6 +329,7 @@ function setPlaying(p) {
   playing = p;
   $('play').textContent = p ? '⏸' : '▶';
   if (!p && S) setFrame(frame);   // 멈추면 블렌더도 그 프레임으로
+  if (!p && glbPending) { const v = glbPending; glbPending = null; loadGlb(v); }   // 재생 중 미뤄 둔 3D 모델
 }
 
 let last = 0, acc = 0;
@@ -472,13 +474,17 @@ gizmo.addEventListener('change', () => { need3d = true; });   // 기즈모 hover
 let model = null, glbV = '', lastXf = null, camMode = false, holdCam = 0;
 const byName = new Map();       // 블렌더 오브젝트 이름 → three 오브젝트
 
+// 3D 화면용 모델은 Draco 로 압축돼 온다. 압축 풀기는 DRACOLoader 가 작업 스레드에서 한다 (영상 재생이 멈칫하지 않게)
+const gltfLoader = new GLTFLoader().setDRACOLoader(new DRACOLoader().setDecoderPath('./vendor/draco/'));
 let glbPending = null;
 function loadGlb(v) {
   glbV = v;
-  if (gizmo.dragging) { glbPending = v; return; }   // 드래그 도중 바꿔 끼우면 기즈모가 튄다 → 놓은 뒤에
-  new GLTFLoader().load(`${API}/cache/scene.glb?v=${v}`, g => {
+  // 드래그 도중 바꿔 끼우면 기즈모가 튀고, 영상 재생 중이면 큰 모델을 그래픽카드에 올리는 순간 영상이 멈칫한다
+  // → 놓거나 재생을 멈춘 뒤에
+  if (gizmo.dragging || playing) { glbPending = v; return; }
+  gltfLoader.load(`${API}/cache/scene.glb?v=${v}`, g => {
     if (v !== glbV) return;
-    if (gizmo.dragging) { glbPending = v; return; }
+    if (gizmo.dragging || playing) { glbPending = v; return; }
     const sel = gizmo.object?.userData.bname;
     if (model) {   // 옛 모델의 GPU 메모리(형태·재질·텍스처)를 놓아 준다: 편집할 때마다 새 모델이 오므로
       scene.remove(model);

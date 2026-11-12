@@ -120,11 +120,15 @@ def mute_file_outputs(sc):
 
 
 def export_glb(sc, frame, d):
-    sc.frame_set(frame)
-    # ponytail: 텍스처는 빼고(기본색만) 가볍게. 구도용이라 충분, 필요하면 export_image_format 변경
+    if sc.frame_current != frame:
+        sc.frame_set(frame)
+    # 구도용이라 형태만: 텍스처·노멀·UV 를 빼고 Draco 로 압축 (200만 버텍스 장면 213MB → 2MB, 5.7초 → 3.3초).
+    # 크면 브라우저가 불러오는 순간 영상이 멈칫한다. 노멀이 없으면 3D 화면은 면 단위 음영으로 그린다
     want = dict(filepath=os.path.join(d, "scene.glb"), export_format="GLB", use_renderable=True,
                 export_apply=True, export_animations=False, export_skins=False, export_morph=False,
-                export_cameras=False, export_lights=False, export_yup=True, export_image_format="NONE")
+                export_cameras=False, export_lights=False, export_yup=True, export_image_format="NONE",
+                export_normals=False, export_texcoords=False,
+                export_draco_mesh_compression_enable=True, export_draco_mesh_compression_level=3)
     try:
         names = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()
         bpy.ops.export_scene.gltf(**{k: v for k, v in want.items() if k in names})
@@ -174,20 +178,24 @@ def run(job):
         save(hp, hashes)  # 중간에 끊겨도 '전체 다시'가 유지되게 바로 저장
     emit(t="start")  # 파일 열기·초기화 끝: 애드온이 '살아 있고 이 작업을 시작함'을 알게 (첫 프레임이 길어도)
 
-    if job["geo"]:
-        export_glb(sc, job["frame"], d)
-
     lo, hi = sc.frame_start, sc.frame_end
     cur = min(max(job["frame"], lo), hi)
+    glb_after_first = False
     if has_sim(sc):
         order = range(lo, hi + 1)  # 시뮬레이션은 앞 프레임을 이어서 계산하므로 처음부터 순서대로
+        if job["geo"]:
+            export_glb(sc, lo, d)  # 어차피 처음 프레임부터 도니 거기서 (프레임을 건너뛰면 시뮬레이션이 다시 계산됨)
     else:
         order = sorted(range(lo, hi + 1), key=lambda f: (abs(f - cur), f < cur))  # 현재 프레임부터 바깥으로
+        glb_after_first = job["geo"]  # 지금 보는 프레임을 먼저 보여 주고 3D 화면용 모델은 그다음에
     by_hash = {v: int(k) for k, v in hashes.items() if not k.startswith("_")}
     on_disk = {k for k in hashes if not k.startswith("_")}  # hashes.json 에 이미 적혀 있는 프레임
     saved = time.time()
     try:
-        for f in order:
+        for i, f in enumerate(order):
+            if glb_after_first and i == 1:
+                export_glb(sc, cur, d)
+                glb_after_first = False
             if not jobs.empty():
                 return  # 새 편집이 들어왔으면 그만두고 새 작업으로
             sc.frame_set(f)
@@ -228,6 +236,8 @@ def run(job):
             emit(t="done", f=f, v=h[:8])
     finally:
         save(hp, hashes)
+        if glb_after_first:  # 프레임이 하나뿐이거나 첫 프레임 직후 끊긴 경우에도 3D 모델 갱신은 빠뜨리지 않는다
+            export_glb(sc, cur, d)
 
 
 while True:

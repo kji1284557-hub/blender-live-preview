@@ -42,7 +42,8 @@ RESOLUTIONS = (25, 50, 75, 100)
 ORIGINS = {f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}"}
 HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}"}
 MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
-        ".jpg": "image/jpeg", ".glb": "model/gltf-binary", ".json": "application/json"}
+        ".jpg": "image/jpeg", ".glb": "model/gltf-binary", ".json": "application/json",
+        ".wasm": "application/wasm"}
 
 # 편집 감지 분류: 무시 / 프레임 해시 비교로 충분(바뀐 프레임만) / 그 외 데이터는 전체 다시 렌더
 IGNORE = (bpy.types.Screen, bpy.types.WorkSpace, bpy.types.WindowManager,
