@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Live Preview (실시간 미리보기)",
     "author": "",
-    "version": (0, 1, 1),
+    "version": (0, 1, 2),
     "blender": (4, 1, 0),
     "location": "3D 뷰 > 사이드바(N) > 미리보기",
     "description": "편집하면 자동 렌더, 브라우저에서 영상 재생과 구도 조절",
@@ -726,8 +726,10 @@ ATTEMPT = os.path.join(ROOT, "update_attempt.txt")
 
 
 def check_update():
-    """백그라운드 스레드. GitHub 최신 릴리스가 더 새 버전이면 zip 을 받아 둔다 (적용은 메인 스레드)."""
-    if not getattr(bpy.app, "online_access", True):  # 4.2+ '온라인 접근 허용' 꺼짐
+    """백그라운드 스레드. GitHub 최신 릴리스가 더 새 버전이면 zip 을 받아 둔다 (적용은 메인 스레드).
+    블렌더 4.2+ 의 '온라인 접근 허용'은 기본이 꺼짐이라 따르면 업데이트가 사실상 안 된다 →
+    이 애드온 환경설정의 '자동 업데이트 확인'으로 따로 켜고 끈다. 블렌더를 오프라인 모드로 실행했을 때만 건너뜀"""
+    if getattr(bpy.app, "online_access_override", False) and not getattr(bpy.app, "online_access", True):
         return
     if os.path.exists(os.path.join(os.path.dirname(HERE), ".git")):
         return  # 개발 폴더에서 로드한 경우: 작업 중인 코드를 덮지 않는다
@@ -880,7 +882,19 @@ class LP_PT_panel(bpy.types.Panel):
             l.label(text=St.error, icon="ERROR")
 
 
-classes = (LP_OT_open, LP_OT_rerender, LP_OT_auto, LP_PT_panel)
+class LP_Prefs(bpy.types.AddonPreferences):
+    bl_idname = __name__
+
+    auto_update: bpy.props.BoolProperty(
+        name="자동 업데이트 확인",
+        description="블렌더를 켤 때 GitHub 에서 새 버전을 확인해 자동으로 받아 적용 (블렌더의 '온라인 접근 허용'과 별개)",
+        default=True)
+
+    def draw(self, ctx):
+        self.layout.prop(self, "auto_update")
+
+
+classes = (LP_Prefs, LP_OT_open, LP_OT_rerender, LP_OT_auto, LP_PT_panel)
 HANDLERS = ((bpy.app.handlers.depsgraph_update_post, on_depsgraph),
             (bpy.app.handlers.frame_change_post, on_frame),
             (bpy.app.handlers.load_post, on_load),
@@ -900,7 +914,9 @@ def register():
     St.dir = ""
     St.busy = False
     bpy.app.timers.register(tick, first_interval=0.5, persistent=True)
-    threading.Thread(target=check_update, daemon=True).start()
+    prefs = bpy.context.preferences.addons.get(__name__)
+    if prefs is None or prefs.preferences.auto_update:
+        threading.Thread(target=check_update, daemon=True).start()
     threading.Thread(target=clean_old_caches, daemon=True).start()
 
 
