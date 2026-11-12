@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>블렌더 실시간 미리보기</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+</head>
+<body>
+<header>
+  <span id="conn" class="dot" title="블렌더 연결 상태"></span>
+  <b id="file">블렌더 연결 대기 중…</b>
+  <span id="status"></span>
+  <span class="sp"></span>
+  <label>렌더
+    <select id="engine">
+      <option value="WORKBENCH">Workbench (빠름)</option>
+      <option value="EEVEE">EEVEE</option>
+      <option value="CYCLES">Cycles (고화질)</option>
+    </select>
+  </label>
+  <label>해상도
+    <select id="res"><option>25</option><option>50</option><option>75</option><option>100</option></select>%
+  </label>
+  <label><input type="checkbox" id="auto"> 자동 렌더</label>
+  <button id="rerender">전체 다시 렌더</button>
+  <label>보기
+    <select id="layout">
+      <option value="split">나란히</option>
+      <option value="render">렌더만</option>
+      <option value="three">3D만</option>
+    </select>
+  </label>
+</header>
+
+<main id="main" class="split">
+  <section id="renderPane" class="pane">
+    <canvas id="view"></canvas>
+  </section>
+  <section id="threePane" class="pane">
+    <div id="three"></div>
+    <div id="tools">
+      <button data-mode="translate" class="on">이동 (G)</button>
+      <button data-mode="rotate">회전 (R)</button>
+      <button data-mode="scale">크기 (S)</button>
+      <button id="camView">카메라 시점 (C)</button>
+      <label>렌즈 <input type="range" id="lens" min="10" max="200" step="1"> <span id="lensVal">-</span>mm</label>
+      <label><input type="checkbox" id="keyOn"> 키프레임 찍기</label>
+      <span id="sel">오브젝트를 클릭해 선택</span>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div id="controls">
+    <button id="first" title="구간 처음">⏮</button>
+    <button id="prev" title="이전 프레임 (←)">◀|</button>
+    <button id="play" title="재생/정지 (Space)">▶</button>
+    <button id="next" title="다음 프레임 (→)">|▶</button>
+    <button id="last" title="구간 끝">⏭</button>
+    <label>속도
+      <select id="speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>1.5</option><option>2</option></select>x
+    </label>
+    <label><input type="checkbox" id="loop" checked> 반복</label>
+    <button id="setIn" title="I">시작점 [I]</button>
+    <button id="setOut" title="O">끝점 [O]</button>
+    <button id="clearRange">구간 해제</button>
+    <label><input type="checkbox" id="follow" checked> 블렌더 프레임 연동</label>
+    <button id="export">영상 저장</button>
+    <span class="sp"></span>
+    <span id="frameNo"></span>
+  </div>
+  <canvas id="bar"></canvas>
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>
