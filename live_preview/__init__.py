@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Live Preview (실시간 미리보기)",
     "author": "",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (4, 1, 0),
     "location": "3D 뷰 > 사이드바(N) > 미리보기",
     "description": "편집하면 자동 렌더, 브라우저에서 영상 재생과 구도 조절",
