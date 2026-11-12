@@ -85,6 +85,8 @@ def frame_hash(sc):
     for c in bpy.data.collections:
         h.update(f"{c.name}{c.hide_render}".encode("utf-8"))
     for ob in sc.objects:
+        if ob.type == "CAMERA" and ob != sc.camera:
+            continue  # 이 프레임에 안 쓰이는 카메라는 그림에 영향 없음 (카메라 여러 대 장면에서 다른 구간까지 다시 렌더하지 않게)
         e = ob.evaluated_get(dg)
         ic = ob.instance_collection.name if ob.instance_collection else ""
         h.update(f"{ob.name}{ob.hide_render}{ob.instance_type}{ic}{m2s(e.matrix_world)}".encode("utf-8"))

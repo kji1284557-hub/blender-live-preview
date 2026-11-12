@@ -48,8 +48,9 @@ MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "
 # 편집 감지 분류: 무시 / 프레임 해시 비교로 충분(바뀐 프레임만) / 그 외 데이터는 전체 다시 렌더
 IGNORE = (bpy.types.Screen, bpy.types.WorkSpace, bpy.types.WindowManager,
           bpy.types.Brush, bpy.types.Palette, bpy.types.Text)
-# 라이트는 크기·모양·노드 등 값이 많아 전체 렌더 쪽에 둔다. 카메라는 워커가 모든 속성을 해시로 비교
-LIGHT = (bpy.types.Action, bpy.types.Collection, bpy.types.Key, bpy.types.Camera)
+# 라이트는 크기·모양·노드 등 값이 많아 전체 렌더 쪽에 둔다. 카메라는 워커가 모든 속성을 해시로 비교.
+# 아마추어(포즈를 바꾸면 함께 업데이트됨)는 본 행렬·변형된 정점을 해시가 비교한다
+LIGHT = (bpy.types.Action, bpy.types.Collection, bpy.types.Key, bpy.types.Camera, bpy.types.Armature)
 # 미리보기 렌더 결과와 무관한 장면 설정 (워커가 덮어쓰거나, 화면·성능에만 쓰임)
 SKIP_RNA = {"rna_type", "name", "filepath", "engine", "use_lock_interface", "fps", "fps_base",
             "resolution_percentage", "threads", "threads_mode", "use_persistent_data", "preview_pixel_size",
@@ -280,8 +281,10 @@ def on_depsgraph(sc, depsgraph):
                 geo_only = True  # 모디파이어 수정 등, 변환은 그대로인데 형태가 바뀜
         elif getattr(idb, "bl_idname", "") == "CompositorNodeTree":
             changed = full = True  # 컴포지터(4.x 는 씬에 딸린 데이터)
-        elif isinstance(idb, IGNORE) or getattr(idb, "is_embedded_data", False):
+        elif isinstance(idb, IGNORE) or (getattr(idb, "is_embedded_data", False)
+                                          and not isinstance(idb, bpy.types.Collection)):
             pass  # 재질·라이트·월드에 딸린 노드 트리: 함께 오는 주인 데이터의 분류를 따른다
+            # (씬의 최상위 컬렉션도 내장 데이터지만, 오브젝트 추가·삭제가 여기로 오므로 아래 컬렉션 규칙을 따른다)
         elif isinstance(idb, LIGHT):
             changed = True
             geo |= isinstance(idb, bpy.types.Collection)  # 오브젝트 삭제·컬렉션 숨김은 3D 화면도 다시
@@ -570,8 +573,14 @@ def tick():
             St.rng = rng
             send = True
         # 렌더와 상관없이 화면에만 쓰이는 값(fps·마커)은 바뀌면 상태만 다시 보낸다
-        meta = (sc.render.fps, sc.render.fps_base, tuple((m.frame, m.name) for m in sc.timeline_markers))
+        meta = (sc.render.fps, sc.render.fps_base,
+                tuple((m.frame, m.name, m.camera and m.camera.name) for m in sc.timeline_markers))
         if meta != St.meta:
+            # 카메라가 연결된 마커가 바뀌면(옮김·추가·삭제·카메라 교체) 구간별 활성 카메라가 달라진다 → 렌더 확인
+            # (프레임 해시가 프레임마다 활성 카메라를 보므로 바뀐 구간만 다시 렌더됨)
+            cams = lambda mt: tuple(x for x in mt[2] if x[2]) if mt else ()
+            if St.meta is not None and cams(meta) != cams(St.meta):
+                mark()
             St.meta = meta
             send = True
         if sc.frame_current != St.sent_frame:
